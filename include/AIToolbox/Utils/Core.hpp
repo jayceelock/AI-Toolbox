@@ -9,7 +9,8 @@
 #include <AIToolbox/Types.hpp>
 
 namespace AIToolbox {
-    constexpr auto equalEpsilonSmall = 0.000001;
+    constexpr auto equalEpsilonSmall = 0.0000001;
+    //constexpr auto equalEpsilonSmall = 0.000001;
     constexpr auto equalEpsilonGeneral = 0.00000000001;
     /**
      * @brief Copies a 3d container into another 3d container.

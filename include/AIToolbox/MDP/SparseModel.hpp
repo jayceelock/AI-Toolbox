@@ -398,12 +398,16 @@ namespace AIToolbox::MDP {
         for ( size_t a = 0; a < A; ++a ) {
             for ( size_t s1 = 0; s1 < S; ++s1 ) {
                 const double p = model.getTransitionProbability(s, a, s1);
-                if ( p < 0.0 || p > 1.0 ) throw std::invalid_argument("Input transition table does not contain valid probabilities.");
+                if ( p < 0.0 || p > 1.0 ) throw std::invalid_argument("Input transition table does not contain valid probabilities: p out of bounds.");
                 if ( checkDifferentSmall(0.0, p) ) transitions_[a].insert(s, s1) = p;
                 const double r = model.getExpectedReward(s, a, s1);
                 if ( checkDifferentSmall(0.0, r) ) rewards_.coeffRef(s, a) += r * p;
             }
-            if ( checkDifferentSmall(1.0, transitions_[a].row(s).sum()) ) throw std::invalid_argument("Input transition table does not contain valid probabilities.");
+            if ( checkDifferentSmall(1.0, transitions_[a].row(s).sum()) )
+            {
+                printf("error: s %zd a %zd diff %.16lf", s, a, 1.0 - transitions_[a].row(s).sum());
+                throw std::invalid_argument("Input transition table does not contain valid probabilities: p does not add up to 1.0");
+            }
         }
 
         for ( size_t a = 0; a < A; ++a )

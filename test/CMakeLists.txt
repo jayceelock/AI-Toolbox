@@ -70,7 +70,8 @@ if (MAKE_MDP)
         # Normally one loads PythonInterp first, but since
         # here the interpreter is only optional then libs
         # come first. The version must be the same though.
-        find_package(PythonInterp ${PYTHONLIBS_VERSION_STRING_STRIPPED} EXACT)
+        #find_package(PythonInterp ${PYTHONLIBS_VERSION_STRING_STRIPPED} EXACT)
+        find_package(PythonInterp 2.7 )
         if (PYTHONINTERP_FOUND)
             AddTestPython(MDP Experience)
             AddTestPython(MDP QLearning)
