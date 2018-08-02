@@ -1,8 +1,11 @@
 #include <AIToolbox/Factored/Bandit/Algorithms/Utils/UCVE.hpp>
 
 #include <AIToolbox/Utils/Core.hpp>
+#include <AIToolbox/Utils/Prune.hpp>
 #include <AIToolbox/Factored/Utils/Core.hpp>
 #include <AIToolbox/Impl/Logging.hpp>
+
+#include <boost/iterator/transform_iterator.hpp>
 
 namespace AIToolbox::Factored::Bandit {
     /**
@@ -46,25 +49,6 @@ namespace AIToolbox::Factored::Bandit {
     std::vector<const UCVE::Entries*> getPayoffs(const UCVE::Rules & rules, const PartialAction & jointAction);
 
     /**
-     * @brief This function performs UCB pruning on the input range of Entries.
-     *
-     * This function performs a comparison against the value vectors of
-     * each Entry, and moves those who are dominated in the context of UCB
-     * (so taking into account exploration bonuses) to the end of the
-     * range.
-     *
-     * @param begin An iterator to the beginning of an Entry range.
-     * @param end An iterator to the end of an Entry range.
-     * @param x_l The lower bound of UCB.
-     * @param x_u The upper bound of UCB.
-     * @param logtA The *half* of what logtA is.
-     *
-     * @return The iterator that separates dominated elements with the non-pruned.
-     */
-    template <typename Iterator>
-    Iterator boundPrune(Iterator begin, Iterator end, double x_l, double x_u, double logtA);
-
-    /**
      * @brief This function returns cross-sums common elements between the input plus all unique Rules.
      *
      * The inputs must be sorted by PartialAction lexically. This function
@@ -89,27 +73,26 @@ namespace AIToolbox::Factored::Bandit {
             removeAgent(graph_.variableSize() - 1);
 
         AI_LOGGER(AI_SEVERITY_DEBUG, "Done removing agents.");
-        Entries results;
         if (finalFactors_.size() == 0) return {};
 
-        AI_LOGGER(AI_SEVERITY_DEBUG, "Cross-summing final factors...");
+        AI_LOGGER(AI_SEVERITY_DEBUG, "Picking best final factors...");
+        Result retval; std::get<1>(retval).fill(0.0);
         for (const auto & fValue : finalFactors_) {
-            results = crossSum(results, fValue);
-            results.erase(boundPrune(std::begin(results), std::end(results), 0.0, 0.0, logtA_), std::end(results));
-        }
-        AI_LOGGER(AI_SEVERITY_DEBUG, "Now there are " << results.size() << " factors remaining.");
+            const auto begin = fValue.begin(), end = fValue.end();
 
-        double max = std::numeric_limits<double>::lowest();
-        Entries::iterator retval;
-        for (auto it = std::begin(results); it != std::end(results); ++it) {
-            double itVal = computeValue(*it, 0.0, 0.0);
-            if (itVal > max) {
-                max = itVal;
-                retval = it;
+            double max = computeValue(*begin, 0.0, logtA_);
+            auto maxIt = begin;
+            for (auto it = begin + 1; it != end; ++it) {
+                const auto tmp = computeValue(*it, 0.0, logtA_);
+                if (tmp > max) {
+                    max = tmp;
+                    maxIt = it;
+                }
             }
+            std::get<0>(retval) = merge(std::get<0>(retval), std::get<0>(*maxIt));
+            std::get<1>(retval) += std::get<1>(*maxIt);
         }
-
-        return *retval;
+        return retval;
     }
 
     void UCVE::removeAgent(const size_t agent) {
@@ -180,7 +163,7 @@ namespace AIToolbox::Factored::Bandit {
                     newEntries = crossSum(newEntries, getPayoffs(factors[i]->getData().rules, jointAction));
                     // We remove the entries that cannot possibly be useful anymore
                     if (newEntries.size() > entries) {
-                        newEntries.erase(boundPrune(std::begin(newEntries), std::end(newEntries), x_l, x_u, logtA_), std::end(newEntries));
+                        newEntries.erase(boundPrune(std::begin(newEntries), std::end(newEntries), x_l, x_u), std::end(newEntries));
                         entries = newEntries.size();
                     }
                 }
@@ -248,25 +231,30 @@ namespace AIToolbox::Factored::Bandit {
         return std::get<1>(e)[0] + std::sqrt((std::get<1>(e)[1] + x) * logtA);
     };
 
-    template <typename Iterator>
-    Iterator boundPrune(const Iterator begin, Iterator end, const double x_l, const double x_u, const double logtA) {
+    UCVE::Entries::iterator UCVE::boundPrune(const Entries::iterator begin, Entries::iterator end, const double x_l, const double x_u) {
         if ( std::distance(begin, end) < 2 ) return end;
 
-        // A custom algorithm could maybe be faster here, since this is one
-        // of the bottlenecks of the algorithm, but for now we'll keep it
-        // simple.
+        // We first eliminate all dominated vectors, then we remove all that
+        // can't possibly be useful using the bounds we have computed.
+        const auto unwrap = +[](UCVE::Entry & entry) -> UCVE::V & {return std::get<1>(entry);};
+        const auto rbegin = boost::make_transform_iterator(begin, unwrap);
+        const auto rend   = boost::make_transform_iterator(end, unwrap);
 
-        // Descending sort by lower value
-        std::sort(begin, end, [x_l, logtA](const UCVE::Entry & lhs, const UCVE::Entry & rhs) {
-            return computeValue(lhs, x_l, logtA) > computeValue(rhs, x_l, logtA);
-        });
-        // Remove uniques
-        end = std::unique(begin, end, [](const UCVE::Entry & lhs, const UCVE::Entry & rhs) {
-            return std::get<1>(lhs) == std::get<1>(rhs);
-        });
-        // Remove bounded by upper value
-        const double max = computeValue(*begin, x_l, logtA);
-        return std::remove_if(begin + 1, end, [max, x_u, logtA](const UCVE::Entry & e) { return computeValue(e, x_u, logtA) <= max; });
+        end = extractDominated(2, rbegin, rend).base();
+
+        double max = computeValue(*begin, x_l, logtA_);
+        auto maxIt = begin;
+        for (auto it = begin + 1; it != end; ++it) {
+            const auto tmp = computeValue(*it, x_l, logtA_);
+            if (tmp > max) {
+                max = tmp;
+                maxIt = it;
+            }
+        }
+        // Put the best first so we can use <= for the pruning (otherwise if we
+        // didn't know we would be forced to use < to avoid removing the best)
+        std::iter_swap(begin, maxIt);
+        return std::remove_if(begin + 1, end, [max, x_u, logtA = logtA_](const UCVE::Entry & e) { return computeValue(e, x_u, logtA) <= max; });
     }
 
     std::vector<const UCVE::Entries*> getPayoffs(const UCVE::Rules & rules, const PartialAction & jointAction) {

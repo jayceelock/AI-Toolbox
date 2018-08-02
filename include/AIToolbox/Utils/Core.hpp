@@ -98,7 +98,7 @@ namespace AIToolbox {
     }
 
     /**
-     * @brief This function compares two AIToolbox::Vectors of equal size.
+     * @brief This function compares two general vectors of equal size lexicographically.
      *
      * @param lhs The left hand size of the comparison.
      * @param rhs The right hand size of the comparison.
@@ -113,14 +113,6 @@ namespace AIToolbox {
             if (lhs[i] < rhs[i]) return -1;
         }
         return 0;
-    }
-
-    inline bool operator<(const Vector & lhs, const Vector & rhs) {
-        return veccmp(lhs, rhs) < 0;
-    }
-
-    inline bool operator>(const Vector & lhs, const Vector & rhs) {
-        return veccmp(lhs, rhs) > 0;
     }
 
     /**
