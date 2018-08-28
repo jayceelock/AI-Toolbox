@@ -4,14 +4,14 @@
 #include <boost/heap/fibonacci_heap.hpp>
 
 #include <AIToolbox/POMDP/Types.hpp>
+#include <AIToolbox/POMDP/TypeTraits.hpp>
 #include <AIToolbox/POMDP/Utils.hpp>
 #include <AIToolbox/POMDP/Algorithms/Utils/Projecter.hpp>
 
 #include <set>
 #include <boost/iterator/transform_iterator.hpp>
 
-#include <AIToolbox/Utils/VertexEnumeration.hpp>
-#include <AIToolbox/LP.hpp>
+#include <AIToolbox/Utils/Polytope.hpp>
 
 #include <AIToolbox/Impl/Logging.hpp>
 
@@ -119,7 +119,7 @@ namespace AIToolbox::POMDP {
              * @return A tuple containing the maximum variation for the
              *         ValueFunction and the computed ValueFunction.
              */
-            template <typename M, typename = std::enable_if_t<is_model<M>::value>>
+            template <typename M, typename = std::enable_if_t<is_model_v<M>>>
             std::tuple<double, ValueFunction> operator()(const M & model);
 
         private:
@@ -175,8 +175,6 @@ namespace AIToolbox::POMDP {
             std::vector<std::pair<Belief, double>> vertices;
             std::set<Belief, Comparator> triedVertices;
 
-            const auto unwrap = +[](const VEntry & ve) -> const MDP::Values & {return ve.values;};
-
             // For each corner belief, find its value and alphavector. Add the
             // alphavectors in a separate list, remove duplicates. Note: In theory
             // we must be able to find all alphas for each corner, not just a
@@ -229,7 +227,9 @@ namespace AIToolbox::POMDP {
                     // we can't really trust the values that come out as they
                     // may be lower than what we actually have. So we are
                     // forced to recompute their value.
-                    findBestAtBelief(vertex.first, std::begin(goodSupports), std::end(goodSupports), &currentValue);
+                    const auto gsBegin = boost::make_transform_iterator(std::cbegin(goodSupports), unwrap);
+                    const auto gsEnd   = boost::make_transform_iterator(std::cend(goodSupports),   unwrap);
+                    findBestAtPoint(vertex.first, gsBegin, gsEnd, &currentValue);
 
                     auto diff = trueValue - currentValue;
                     if (diff > epsilon_ && checkDifferentGeneral(diff, epsilon_)) {
@@ -295,80 +295,6 @@ namespace AIToolbox::POMDP {
         }
 
         return std::make_tuple(useEpsilon ? variation : 0.0, v);
-    }
-
-    /**
-     * @brief This function computes the optimistic value of a point given known vertices and values.
-     *
-     * This function computes an LP to determine the best possible value of a
-     * point given all known best vertices around it.
-     *
-     * This function is needed in multi-objective settings (rather than
-     * POMDPs), since the step where we compute the optimal value for a given
-     * point is extremely expensive (it requires solving a full MDP). Thus
-     * linear programming is used in order to determine an optimistic bound
-     * when deciding the next point to extract from the queue during the linear
-     * support process.
-     *
-     * @param b The point where we want to compute the best possible value.
-     * @param bvBegin The start of the range of point-value pairs representing all surrounding vertices.
-     * @param bvEnd The end of that same range.
-     *
-     * @return The best possible value that the input point can have given the known vertices.
-     */
-    template <typename It>
-    double computeOptimisticValue(const Vector & p, It pvBegin, It pvEnd) {
-        const size_t vertexNumber = std::distance(pvBegin, pvEnd);
-        if (vertexNumber == 0) return 0.0;
-        const size_t S = p.size();
-
-        LP lp(S);
-
-        /*
-         * With this LP we are looking for an optimistic hyperplane that can
-         * tightly fit all corners that we already have, and maximize the value
-         * at the input point.
-         *
-         * Our constraints are of the form
-         *
-         * vertex[0][0]) * h0 + vertex[0][1]) * h1 + ... <= vertex[0].currentValue
-         * vertex[1][0]) * h0 + vertex[1][1]) * h1 + ... <= vertex[1].currentValue
-         * ...
-         *
-         * Since we are looking for an optimistic hyperplane, all variables are
-         * unbounded since the hyperplane may need to go negative at some
-         * states.
-         *
-         * Finally, our constraint is a row to maximize:
-         *
-         * b * v0 + b * v1 + ...
-         *
-         * Which means we try to maximize the value of the input point with the
-         * newly found hyperplane.
-         */
-
-        // Set objective to maximize
-        lp.row = p;
-        lp.setObjective(true);
-
-        // Set unconstrained to all variables
-        for (size_t s = 0; s < S; ++s)
-            lp.setUnbounded(s);
-
-        // Set constraints for all input belief points and current values.
-        for (auto it = pvBegin; it != pvEnd; ++it) {
-            lp.row = it->first;
-            lp.pushRow(LP::Constraint::LessEqual, it->second);
-        }
-
-        double retval;
-        // Note that we don't care about the optimistic alphavector, so we
-        // discard it. We check that everything went fine though, in theory
-        // there shouldn't be any problems here.
-        auto solution = lp.solve(0, &retval);
-        assert(solution);
-
-        return retval;
     }
 }
 

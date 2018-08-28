@@ -5,6 +5,7 @@
 
 #include <AIToolbox/Utils/Prune.hpp>
 #include <AIToolbox/POMDP/Types.hpp>
+#include <AIToolbox/POMDP/TypeTraits.hpp>
 #include <AIToolbox/POMDP/Utils.hpp>
 #include <AIToolbox/POMDP/Algorithms/Utils/Projecter.hpp>
 #include <AIToolbox/POMDP/Algorithms/Utils/BeliefGenerator.hpp>
@@ -134,7 +135,7 @@ namespace AIToolbox::POMDP {
              * @return A tuple containing the maximum variation for the
              *         ValueFunction and the computed ValueFunction.
              */
-            template <typename M, typename = std::enable_if_t<is_model<M>::value>>
+            template <typename M, typename = std::enable_if_t<is_model_v<M>>>
             std::tuple<double, ValueFunction> operator()(const M & model, ValueFunction v = {});
 
             /**
@@ -157,7 +158,7 @@ namespace AIToolbox::POMDP {
              * @return A tuple containing the maximum variation for the
              *         ValueFunction and the computed ValueFunction.
              */
-            template <typename M, typename = std::enable_if_t<is_model<M>::value>>
+            template <typename M, typename = std::enable_if_t<is_model_v<M>>>
             std::tuple<double, ValueFunction> operator()(const M & model, const std::vector<Belief> & bList, ValueFunction v = {});
 
         private:
@@ -243,11 +244,13 @@ namespace AIToolbox::POMDP {
             for ( size_t a = 0; a < A; ++a )
                 w.insert(std::end(w), std::make_move_iterator(std::begin(projs[a][0])), std::make_move_iterator(std::end(projs[a][0])));
 
-            auto begin = std::begin(w), bound = begin, end = std::end(w);
+            auto begin = boost::make_transform_iterator(std::begin(w), unwrap);
+            auto end   = boost::make_transform_iterator(std::end(w),   unwrap);
+            auto bound = begin;
             for ( const auto & belief : beliefs )
-                bound = extractBestAtBelief(belief, begin, bound, end);
+                bound = extractBestAtPoint(belief, begin, bound, end);
 
-            w.erase(bound, end);
+            w.erase(bound.base(), std::end(w));
 
             // If you want to save as much memory as possible, do this.
             // It make take some time more though since it needs to reallocate
@@ -272,7 +275,6 @@ namespace AIToolbox::POMDP {
         for ( const auto & b : bl )
             result.emplace_back(crossSumBestAtBelief(b, projs, a));
 
-        const auto unwrap = +[](VEntry & ve) -> MDP::Values & {return ve.values;};
         const auto rbegin = boost::make_transform_iterator(std::begin(result), unwrap);
         const auto rend   = boost::make_transform_iterator(std::end  (result), unwrap);
 

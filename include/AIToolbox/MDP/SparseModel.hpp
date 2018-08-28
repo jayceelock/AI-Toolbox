@@ -4,6 +4,7 @@
 #include <AIToolbox/Impl/Seeder.hpp>
 
 #include <AIToolbox/MDP/Types.hpp>
+#include <AIToolbox/MDP/TypeTraits.hpp>
 
 #include <AIToolbox/Utils/Probability.hpp>
 
@@ -152,7 +153,7 @@ namespace AIToolbox::MDP {
              * @tparam M The type of the other model.
              * @param model The model that needs to be copied.
              */
-            template <typename M, typename = std::enable_if_t<is_model<M>::value>>
+            template <typename M, typename = std::enable_if_t<is_model_v<M>>>
             SparseModel(const M& model);
 
             /**

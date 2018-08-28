@@ -7,7 +7,11 @@
 
 #include <AIToolbox/Utils/Core.hpp>
 #include <AIToolbox/Utils/Probability.hpp>
+#include <AIToolbox/Utils/Polytope.hpp>
 #include <AIToolbox/POMDP/Types.hpp>
+#include <AIToolbox/POMDP/TypeTraits.hpp>
+
+#include <boost/iterator/transform_iterator.hpp>
 
 namespace AIToolbox::POMDP {
     /**
@@ -25,6 +29,13 @@ namespace AIToolbox::POMDP {
     // This implementation is temporary until we can substitute both with the
     // spaceship operator (<=>) in C++20.
     bool operator==(const VEntry & lhs, const VEntry & rhs);
+
+    /**
+     * @brief This function is used with transform iterators to obtain the Values of a VEntry.
+     */
+    inline const MDP::Values & unwrap(const VEntry & ve) {
+        return ve.values;
+    }
 
     /**
      * @brief This function creates a default ValueFunction.
@@ -85,10 +96,10 @@ namespace AIToolbox::POMDP {
      *
      * @return The SOSA table for the input pomdp.
      */
-    template <typename M, std::enable_if_t<is_model<M>::value, int> = 0>
+    template <typename M, std::enable_if_t<is_model_v<M>, int> = 0>
     auto makeSOSA(const M & m) {
-        if constexpr(is_model_eigen<M>::value) {
-            boost::multi_array<typename remove_cv_ref<decltype(m.getTransitionFunction(0))>::type, 2> retval( boost::extents[m.getA()][m.getO()] );
+        if constexpr(is_model_eigen_v<M>) {
+            boost::multi_array<remove_cv_ref_t<decltype(m.getTransitionFunction(0))>, 2> retval( boost::extents[m.getA()][m.getO()] );
             for (size_t a = 0; a < m.getA(); ++a)
                 for (size_t o = 0; o < m.getO(); ++o)
                     retval[a][o] = m.getTransitionFunction(a) * Vector(m.getObservationFunction(a).col(o)).asDiagonal();
@@ -124,13 +135,13 @@ namespace AIToolbox::POMDP {
      * @param o The observation registered.
      * @param bRet The output belief.
      */
-    template <typename M, std::enable_if_t<is_model<M>::value, int> = 0>
+    template <typename M, std::enable_if_t<is_model_v<M>, int> = 0>
     void updateBeliefUnnormalized(const M & model, const Belief & b, const size_t a, const size_t o, Belief * bRet) {
         if (!bRet) return;
 
         auto & br = *bRet;
 
-        if constexpr(is_model_eigen<M>::value) {
+        if constexpr(is_model_eigen_v<M>) {
             br = model.getObservationFunction(a).col(o).cwiseProduct((b.transpose() * model.getTransitionFunction(a)).transpose());
         } else {
             const size_t S = model.getS();
@@ -160,7 +171,7 @@ namespace AIToolbox::POMDP {
      * @param a The action taken during the transition.
      * @param o The observation registered.
      */
-    template <typename M, std::enable_if_t<is_model<M>::value, int> = 0>
+    template <typename M, std::enable_if_t<is_model_v<M>, int> = 0>
     Belief updateBeliefUnnormalized(const M & model, const Belief & b, const size_t a, const size_t o) {
         Belief br(model.getS());
         updateBeliefUnnormalized(model, b, a, o, &br);
@@ -188,7 +199,7 @@ namespace AIToolbox::POMDP {
      * @param o The observation registered.
      * @param bRet The output belief.
      */
-    template <typename M, std::enable_if_t<is_model<M>::value, int> = 0>
+    template <typename M, std::enable_if_t<is_model_v<M>, int> = 0>
     void updateBelief(const M & model, const Belief & b, const size_t a, const size_t o, Belief * bRet) {
         if (!bRet) return;
 
@@ -218,7 +229,7 @@ namespace AIToolbox::POMDP {
      * @param a The action taken during the transition.
      * @param o The observation registered.
      */
-    template <typename M, std::enable_if_t<is_model<M>::value, int> = 0>
+    template <typename M, std::enable_if_t<is_model_v<M>, int> = 0>
     Belief updateBelief(const M & model, const Belief & b, const size_t a, const size_t o) {
         Belief br(model.getS());
         updateBelief(model, b, a, o, &br);
@@ -242,13 +253,13 @@ namespace AIToolbox::POMDP {
      * @param a The action taken during the transition.
      * @param bRet The output belief.
      */
-    template <typename M, std::enable_if_t<is_model<M>::value, int> = 0>
+    template <typename M, std::enable_if_t<is_model_v<M>, int> = 0>
     void updateBeliefPartial(const M & model, const Belief & b, const size_t a, Belief * bRet) {
         if (!bRet) return;
 
         auto & br = *bRet;
 
-        if constexpr(is_model_eigen<M>::value) {
+        if constexpr(is_model_eigen_v<M>) {
             br = (b.transpose() * model.getTransitionFunction(a)).transpose();
         } else {
             const size_t S = model.getS();
@@ -276,7 +287,7 @@ namespace AIToolbox::POMDP {
      * @param b The old belief.
      * @param a The action taken during the transition.
      */
-    template <typename M, std::enable_if_t<is_model<M>::value, int> = 0>
+    template <typename M, std::enable_if_t<is_model_v<M>, int> = 0>
     Belief updateBeliefPartial(const M & model, const Belief & b, const size_t a) {
         Belief bRet(model.getS());
         updateBeliefPartial(model, b, a, &bRet);
@@ -303,13 +314,13 @@ namespace AIToolbox::POMDP {
      * @param o The observation registered.
      * @param bRet The output belief.
      */
-    template <typename M, std::enable_if_t<is_model<M>::value, int> = 0>
+    template <typename M, std::enable_if_t<is_model_v<M>, int> = 0>
     void updateBeliefPartialUnnormalized(const M & model, const Belief & b, const size_t a, const size_t o, Belief * bRet) {
         if (!bRet) return;
 
         auto & br = *bRet;
 
-        if constexpr(is_model_eigen<M>::value) {
+        if constexpr(is_model_eigen_v<M>) {
             br = model.getObservationFunction(a).col(o).cwiseProduct(b);
         } else {
             const size_t S = model.getS();
@@ -337,7 +348,7 @@ namespace AIToolbox::POMDP {
      * @param a The action taken during the transition.
      * @param o The observation registered.
      */
-    template <typename M, std::enable_if_t<is_model<M>::value, int> = 0>
+    template <typename M, std::enable_if_t<is_model_v<M>, int> = 0>
     Belief updateBeliefPartialUnnormalized(const M & model, const Belief & b, const size_t a, const size_t o) {
         Belief bRet(model.getS());
         updateBeliefPartialUnnormalized(model, b, a, o, &bRet);
@@ -371,7 +382,7 @@ namespace AIToolbox::POMDP {
      * @param o The observation registered.
      * @param bRet The output belief.
      */
-    template <typename M, std::enable_if_t<is_model<M>::value, int> = 0>
+    template <typename M, std::enable_if_t<is_model_v<M>, int> = 0>
     void updateBeliefPartialNormalized(const M & model, const Belief & b, const size_t a, const size_t o, Belief * bRet) {
         if (!bRet) return;
 
@@ -408,7 +419,7 @@ namespace AIToolbox::POMDP {
      * @param a The action taken during the transition.
      * @param o The observation registered.
      */
-    template <typename M, std::enable_if_t<is_model<M>::value, int> = 0>
+    template <typename M, std::enable_if_t<is_model_v<M>, int> = 0>
     Belief updateBeliefPartialNormalized(const M & model, const Belief & b, const size_t a, const size_t o) {
         auto newB = updateBeliefPartialUnnormalized(model, b, a, o);
         newB /= newB.sum();
@@ -424,9 +435,9 @@ namespace AIToolbox::POMDP {
      *
      * @return The immediate reward.
      */
-    template <typename M, std::enable_if_t<is_model<M>::value, int> = 0>
+    template <typename M, std::enable_if_t<is_model_v<M>, int> = 0>
     double beliefExpectedReward(const M& model, const Belief & b, const size_t a) {
-        if constexpr (is_model_eigen<M>::value) {
+        if constexpr (is_model_eigen_v<M>) {
             return model.getRewardFunction().col(a).dot(b);
         } else {
             double rew = 0.0; const size_t S = model.getS();
@@ -436,204 +447,6 @@ namespace AIToolbox::POMDP {
 
             return rew;
         }
-    }
-
-    /**
-     * @brief This function returns an iterator pointing to the best value for the specified belief.
-     *
-     * Ideally I would like to SFINAE that the iterator type is from VList, but at the moment
-     * it would take too much time. Just remember that!
-     *
-     * @tparam Iterator An iterator, can be const or not, from VList.
-     * @param bbegin The begin of the belief.
-     * @param bend The end of the belief.
-     * @param begin The start of the range to look in.
-     * @param end The end of the range to look in (excluded).
-     * @param value A pointer to double, which gets set to the value of the given belief with the found VEntry.
-     *
-     * @return An iterator pointing to the best choice in range.
-     */
-    template <typename Iterator>
-    Iterator findBestAtBelief(const Belief & b, Iterator begin, Iterator end, double * value = nullptr) {
-        auto bestMatch = begin;
-        double bestValue = b.dot(bestMatch->values);
-
-        while ( (++begin) < end ) {
-            auto & v = begin->values;
-            const double currValue = b.dot(v);
-            if ( currValue > bestValue || ( currValue == bestValue && veccmp(v, bestMatch->values) > 0 ) ) {
-                bestMatch = begin;
-                bestValue = currValue;
-            }
-        }
-        if ( value ) *value = bestValue;
-        return bestMatch;
-    }
-
-    /**
-     * @brief This function returns an iterator pointing to the best value for the specified corner of the simplex space.
-     *
-     * Ideally I would like to SFINAE that the iterator type is from VList, but at the moment
-     * it would take too much time. Just remember that!
-     *
-     * @tparam Iterator An iterator, can be const or not, from VList.
-     * @param corner The corner of the belief space we are checking.
-     * @param begin The start of the range to look in.
-     * @param end The end of the range to look in (excluded).
-     *
-     * @return An iterator pointing to the best choice in range.
-     */
-    template <typename Iterator>
-    Iterator findBestAtSimplexCorner(const size_t corner, Iterator begin, Iterator end, double * value = nullptr) {
-        auto bestMatch = begin;
-        double bestValue = bestMatch->values[corner];
-
-        while ( (++begin) < end ) {
-            auto & v = begin->values;
-            const double currValue = v[corner];
-            if ( currValue > bestValue || ( currValue == bestValue && veccmp(v, bestMatch->values) > 0 ) ) {
-                bestMatch = begin;
-                bestValue = currValue;
-            }
-        }
-        if ( value ) *value = bestValue;
-        return bestMatch;
-    }
-
-    /**
-     * @brief This function finds and moves the ValueFunction with the highest value for the given belief at the beginning of the specified range.
-     *
-     * This function uses an already existing bound containing previously marked useful
-     * ValueFunctions. The order is 'begin'->'bound'->'end', where bound may be equal to end
-     * where no previous bound exists. The found ValueFunction is moved between 'begin' and
-     * 'bound', but only if it was not there previously.
-     *
-     * @tparam Iterator An iterator, can be const or not, from VList.
-     * @param bbegin The begin of the belief.
-     * @param bend The end of the belief.
-     * @param begin The begin of the search range.
-     * @param bound The begin of the 'useful' range.
-     * @param end The range end to be checked. It is NOT included in the search.
-     *
-     * @return The new bound iterator.
-     */
-    template <typename Iterator>
-    Iterator extractBestAtBelief(const Belief & b, Iterator begin, Iterator bound, Iterator end) {
-        auto bestMatch = findBestAtBelief(b, begin, end);
-
-        if ( bestMatch >= bound )
-            std::iter_swap(bestMatch, bound++);
-
-        return bound;
-    }
-
-    /**
-     * @brief This function finds and moves all best ValueFunctions in the simplex corners at the beginning of the specified range.
-     *
-     * What this function does is to find out which ValueFunctions give the highest value in
-     * corner beliefs. Since multiple corners may use the same ValueFunction, the number of
-     * found ValueFunctions may not be the same as the number of corners.
-     *
-     * This function uses an already existing bound containing previously marked useful
-     * ValueFunctions. The order is 'begin'->'bound'->'end', where bound may be equal to end
-     * where no previous bound exists. All found ValueFunctions are added between 'begin' and
-     * 'bound', but only if they were not there previously.
-     *
-     * @param S The number of corners of the simplex.
-     * @param begin The begin of the search range.
-     * @param bound The begin of the 'useful' range.
-     * @param end The end of the search range. It is NOT included in the search.
-     *
-     * @return The new bound iterator.
-     */
-    template <typename Iterator>
-    Iterator extractBestAtSimplexCorners(const size_t S, Iterator begin, Iterator bound, Iterator end) {
-        if ( end == bound ) return bound;
-
-        // For each corner
-        for ( size_t s = 0; s < S; ++s ) {
-            auto bestMatch = findBestAtSimplexCorner(s, begin, end);
-
-            if ( bestMatch >= bound )
-                std::iter_swap(bestMatch, bound++);
-        }
-        return bound;
-    }
-
-    /**
-     * @brief This function finds and moves all non-useful beliefs at the end of the input range.
-     *
-     * This function helps remove beliefs which do not support any VEntry and
-     * are thus not useful for improving the VList bounds.
-     *
-     * This function moves all non-useful beliefs at the end of the input
-     * range, and returns the resulting iterator pointing to the first
-     * non-useful belief.
-     *
-     * When multiple beliefs support the same VEntry, the ones with the best
-     * values are returned.
-     *
-     * The input VEntries may contain elements which are not supported by any
-     * of the input Beliefs (although if they exist they may slow down the
-     * function).
-     *
-     * @param it The beginning of the belief range to check.
-     * @param bend The end of the belief range to check.
-     * @param begin The beginning of the VEntry range to check against.
-     * @param end The end of the VEntry range to check against.
-     *
-     * @return An iterator pointing to the first non-useful belief.
-     */
-    template <typename BIterator, typename VIterator>
-    BIterator extractBestUsefulBeliefs(BIterator bbegin, BIterator bend, VIterator begin, VIterator end) {
-        const auto beliefsN = std::distance(bbegin, bend);
-        const auto entriesN = std::distance(begin, end);
-
-        std::vector<std::pair<BIterator, double>> bestValues(entriesN, {bend, std::numeric_limits<double>::lowest()});
-        const auto maxBound = beliefsN < entriesN ? bend : bbegin + entriesN;
-
-        // So the idea here is that we advance IT only if we found a belief
-        // which supports a previously unsupported VEntry. This allows us to
-        // avoid doing later work for compacting the beliefs before the bound.
-        //
-        // If instead the found belief takes into consideration an already
-        // supported VEntry, then it either is better or not. If it's better,
-        // we swap it with whatever was before. In both cases, the belief to
-        // discard ends up at the end and we decrease the bound.
-        auto it = bbegin;
-        auto bound = bend;
-        while (it < bound && it < maxBound) {
-            double value;
-            const auto vId = std::distance(begin, findBestAtBelief(*it, begin, end, &value));
-            if (bestValues[vId].second < value) {
-                if (bestValues[vId].first == bend) {
-                    bestValues[vId] = {it++, value};
-                    continue;
-                } else {
-                    bestValues[vId].second = value;
-                    std::iter_swap(bestValues[vId].first, it);
-                }
-            }
-            std::iter_swap(it, --bound);
-        }
-        if (it == bound) return it;
-
-        // If all VEntries have been supported by at least one belief, then we
-        // can finish up the rest with less swaps and checks. Here we only swap
-        // with the best if needed, otherwise we don't have to do anything.
-        //
-        // This is because we can return one belief per VEntry at the most, so
-        // if we're here the bound is not going to move anyway.
-        while (it < bound) {
-            double value;
-            const auto vId = std::distance(begin, findBestAtBelief(*it, begin, end, &value));
-            if (bestValues[vId].second < value) {
-                bestValues[vId].second = value;
-                std::iter_swap(bestValues[vId].first, it);
-            }
-            ++it;
-        }
-        return maxBound;
     }
 
     /**
@@ -665,8 +478,10 @@ namespace AIToolbox::POMDP {
 
         // We compute the crossSum between each best vector for the belief.
         for ( size_t o = 0; o < O; ++o ) {
-            const VList & rowO = row[o];
-            auto bestMatch = findBestAtBelief(b, std::begin(rowO), std::end(rowO), &tmp);
+            auto begin = boost::make_transform_iterator(std::begin(row[o]), unwrap);
+            auto end   = boost::make_transform_iterator(std::end(row[o]),   unwrap);
+
+            auto bestMatch = findBestAtPoint(b, begin, end, &tmp).base();
 
             entry.values += bestMatch->values;
             v += tmp;

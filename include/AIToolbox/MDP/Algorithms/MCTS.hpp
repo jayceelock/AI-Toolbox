@@ -2,6 +2,7 @@
 #define AI_TOOLBOX_MDP_MCTS_HEADER_FILE
 
 #include <AIToolbox/MDP/Types.hpp>
+#include <AIToolbox/MDP/TypeTraits.hpp>
 #include <AIToolbox/Utils/Probability.hpp>
 #include <AIToolbox/Impl/Seeder.hpp>
 
@@ -44,7 +45,7 @@ namespace AIToolbox::MDP {
      */
     template <typename M>
     class MCTS {
-        static_assert(is_generative_model<M>::value, "This class only works for generative MDP models!");
+        static_assert(is_generative_model_v<M>, "This class only works for generative MDP models!");
 
         public:
             using SampleBelief = std::vector<size_t>;

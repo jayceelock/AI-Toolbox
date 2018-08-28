@@ -4,10 +4,12 @@
 #include <algorithm>
 
 #include <boost/heap/fibonacci_heap.hpp>
+#include <boost/iterator/transform_iterator.hpp>
 
 #include <AIToolbox/Impl/Logging.hpp>
 
 #include <AIToolbox/POMDP/Types.hpp>
+#include <AIToolbox/POMDP/TypeTraits.hpp>
 #include <AIToolbox/MDP/Model.hpp>
 #include <AIToolbox/POMDP/Model.hpp>
 
@@ -128,7 +130,7 @@ namespace AIToolbox::POMDP {
              *
              * @return The lower and upper gap bounds, the lower bound VList, and the upper bound QFunction.
              */
-            template <typename M, typename = std::enable_if_t<is_model<M>::value>>
+            template <typename M, typename = std::enable_if_t<is_model_v<M>>>
             std::tuple<double, double, VList, MDP::QFunction> operator()(const M & model, const Belief & initialBelief);
 
         private:
@@ -166,7 +168,7 @@ namespace AIToolbox::POMDP {
              *
              * @return Two lists of beliefs, for lower and upper bound respectively, and a list of values for the upper bound beliefs.
              */
-            template <typename M, typename = std::enable_if_t<is_model<M>::value>>
+            template <typename M, typename = std::enable_if_t<is_model_v<M>>>
             std::tuple<std::vector<Belief>, std::vector<Belief>, std::vector<double>> selectReachableBeliefs(
                 const M & model,
                 const Belief & belief,
@@ -194,7 +196,7 @@ namespace AIToolbox::POMDP {
              *
              * @return A pair with a reward-function only POMDP, and its associated SOSA matrix.
              */
-            template <typename M, typename = std::enable_if_t<is_model<M>::value>>
+            template <typename M, typename = std::enable_if_t<is_model_v<M>>>
             std::tuple<IntermediatePOMDP, SparseMatrix4D> makeNewPomdp(const M& model, const MDP::QFunction & ubQ, const UbVType & ubV);
 
             /**
@@ -212,7 +214,7 @@ namespace AIToolbox::POMDP {
              *
              * @return The best action-value pair.
              */
-            template <typename M, typename = std::enable_if_t<is_model<M>::value>>
+            template <typename M, typename = std::enable_if_t<is_model_v<M>>>
             std::tuple<size_t, double> bestPromisingAction(const M & pomdp, const Belief & belief, const MDP::QFunction & ubQ, const GapMin::UbVType & ubV);
 
             /**
@@ -272,7 +274,6 @@ namespace AIToolbox::POMDP {
         // initial lower bound.
         VList lbVList = std::get<1>(bs(pomdp, true));
         {
-            const auto unwrap = +[](VEntry & ve) -> MDP::Values & {return ve.values;};
             const auto rbegin = boost::make_transform_iterator(std::begin(lbVList), unwrap);
             const auto rend   = boost::make_transform_iterator(std::end  (lbVList), unwrap);
 
@@ -308,7 +309,11 @@ namespace AIToolbox::POMDP {
         // differences. They are the values of the lowerBound and the
         // upperBound at the initial belief.
         double lb;
-        findBestAtBelief(initialBelief, std::begin(lbVList), std::end(lbVList), &lb);
+        {
+            const auto rbegin = boost::make_transform_iterator(std::begin(lbVList), unwrap);
+            const auto rend   = boost::make_transform_iterator(std::end  (lbVList), unwrap);
+            findBestAtPoint(initialBelief, rbegin, rend, &lb);
+        }
         double ub = ubV.second[0];
 
         AI_LOGGER(AI_SEVERITY_INFO, "Initial bounds: " << lb << ", " << ub);
@@ -336,17 +341,27 @@ namespace AIToolbox::POMDP {
                 // add it to the beliefs we already had, and we rerun PBVI.
                 lbBeliefs.insert(std::end(lbBeliefs), std::make_move_iterator(std::begin(newLbBeliefs)), std::make_move_iterator(std::end(newLbBeliefs)));
 
-                // Then we remove all beliefs which don't actively support any
-                // alphaVectors.
-                auto sol = pbvi(pomdp, lbBeliefs, ValueFunction{std::move(lbVList)});
-                lbVList = std::move(std::get<1>(sol).back());
-                lbBeliefs.erase(extractBestUsefulBeliefs(
-                    std::begin(lbBeliefs), std::end(lbBeliefs),
-                    std::begin(lbVList), std::end(lbVList)),
-                    std::end(lbBeliefs)
-                );
-                // And we recompute the lower bound.
-                findBestAtBelief(initialBelief, std::begin(lbVList), std::end(lbVList), &lb);
+                {
+                    // Then we remove all beliefs which don't actively support any
+                    // alphaVectors.
+                    auto sol = pbvi(pomdp, lbBeliefs, ValueFunction{std::move(lbVList)});
+
+                    lbVList = std::move(std::get<1>(sol).back());
+
+                    const auto rbegin = boost::make_transform_iterator(std::begin(lbVList), unwrap);
+                    const auto rend   = boost::make_transform_iterator(std::end  (lbVList), unwrap);
+
+                    lbBeliefs.erase(
+                        extractBestUsefulPoints(
+                            std::begin(lbBeliefs), std::end(lbBeliefs),
+                            rbegin, rend
+                        ),
+                        std::end(lbBeliefs)
+                    );
+
+                    // And we recompute the lower bound.
+                    findBestAtPoint(initialBelief, rbegin, rend, &lb);
+                }
             }
 
             if (newUbBeliefsSize > 0) {
@@ -410,7 +425,7 @@ namespace AIToolbox::POMDP {
         // reward function.
         Matrix2D R(S, model.getA());
         const auto & ir = [&]{
-            if constexpr (MDP::is_model_eigen<M>::value) return model.getRewardFunction();
+            if constexpr (MDP::is_model_eigen_v<M>) return model.getRewardFunction();
             else return computeImmediateRewards(model);
         }();
 
@@ -492,10 +507,10 @@ namespace AIToolbox::POMDP {
      *
      * @return The best action in the input belief with respect to the input VList.
      */
-    template <typename M, typename = std::enable_if_t<is_model<M>::value>>
+    template <typename M, typename = std::enable_if_t<is_model_v<M>>>
     std::tuple<size_t, double> bestConservativeAction(const M & pomdp, const Belief & initialBelief, const VList & lbVList) {
         MDP::QFunction ir = [&]{
-            if constexpr (MDP::is_model_eigen<M>::value)
+            if constexpr (MDP::is_model_eigen_v<M>)
                 return pomdp.getRewardFunction();
             else
                 return computeImmediateRewards(pomdp);
@@ -515,7 +530,9 @@ namespace AIToolbox::POMDP {
                 // Now normalized
                 nextBelief /= nextBeliefProbability;
 
-                auto it = findBestAtBelief(nextBelief, std::begin(lbVList), std::end(lbVList));
+                const auto rbegin = boost::make_transform_iterator(std::begin(lbVList), unwrap);
+                const auto rend   = boost::make_transform_iterator(std::end  (lbVList), unwrap);
+                auto it = findBestAtPoint(nextBelief, rbegin, rend).base();
 
                 bpAlpha += pomdp.getObservationFunction(a).col(o).cwiseProduct(it->values);
             }
@@ -531,7 +548,7 @@ namespace AIToolbox::POMDP {
     template <typename M, typename>
     std::tuple<size_t, double> GapMin::bestPromisingAction(const M & pomdp, const Belief & belief, const MDP::QFunction & ubQ, const GapMin::UbVType & ubV) {
         Vector qvals = belief.transpose() * [&]{
-            if constexpr (MDP::is_model_eigen<M>::value)
+            if constexpr (MDP::is_model_eigen_v<M>)
                 return pomdp.getRewardFunction();
             else
                 return computeImmediateRewards(pomdp);
@@ -581,7 +598,9 @@ namespace AIToolbox::POMDP {
         // We initialize the queue with the initial belief.
         {
             double currentLowerBound;
-            findBestAtBelief(initialBelief, std::begin(lbVList), std::end(lbVList), &currentLowerBound);
+            const auto rbegin = boost::make_transform_iterator(std::begin(lbVList), unwrap);
+            const auto rend   = boost::make_transform_iterator(std::end  (lbVList), unwrap);
+            findBestAtPoint(initialBelief, rbegin, rend, &currentLowerBound);
             const double currentUpperBound = std::get<0>(UB(initialBelief, ubQ, ubV));
             queue.emplace(QueueElement(initialBelief, 0.0, 1.0, currentLowerBound, currentUpperBound, 1, {}));
         }
@@ -723,7 +742,11 @@ namespace AIToolbox::POMDP {
 
                 const double ubValue = std::get<0>(UB(nextBelief, ubQ, ubV));
                 double lbValue;
-                findBestAtBelief(nextBelief, std::begin(lbVList), std::end(lbVList), &lbValue);
+                {
+                    const auto rbegin = boost::make_transform_iterator(std::begin(lbVList), unwrap);
+                    const auto rend   = boost::make_transform_iterator(std::end  (lbVList), unwrap);
+                    findBestAtPoint(nextBelief, rbegin, rend, &lbValue);
+                }
 
                 if ((ubValue - lbValue) * std::pow(pomdp.getDiscount(), depth) > epsilon_ * 20) {
                     const auto nextBeliefOverallProbability = nextBeliefProbability * beliefProbability * pomdp.getDiscount();
