@@ -138,9 +138,9 @@ namespace AIToolbox::MDP {
      * @return The input stream.
      */
     std::istream& operator>>(std::istream &is, Model &);
-    class SparseModel;
     std::istream& operator>>(std::istream &is, SparseModel &);
 
+    class SparseModel;
     class Policy;
     /**
      * @brief This function implements input from stream for the MDP::Model class.
@@ -149,11 +149,11 @@ namespace AIToolbox::MDP {
      * input model if the reading fails.
      *
      * @param is The input stream.
-     * @param p The Policy to write into.
+     * @param p The policy to write into.
      *
      * @return The input stream.
      */
-    std::istream& operator>>(std::istream &is, Policy &);
+    std::istream& operator>>(std::istream &is, Policy & p);
 }
 
 #endif

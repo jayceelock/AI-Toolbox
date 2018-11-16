@@ -10,7 +10,12 @@
 
 namespace AIToolbox {
     constexpr auto equalToleranceSmall = 0.00000001;
+    /// This is the max absolute difference for which two values can be considered equal.
+    /// This is a relative term used in the checkEqualGeneral functions, where
+    /// two values may be considered equal if they are within this percentage
+    /// of each other.
     constexpr auto equalToleranceGeneral = 0.00000000001;
+
     /**
      * @brief Copies a 3d container into another 3d container.
      *
