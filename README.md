@@ -62,12 +62,17 @@ this format, and you can define models via code, we do parse a reasonable subset
 of Cassandra's POMDP format, which allows to reuse already defined problems with
 this library.
 
-### Python Bindings! ###
+### Python 2 and 3 Bindings! ###
 
 The user interface of the library is pretty much the same with Python than what
 you would get by using simply C++. See the `examples` folder to see just how
 much Python and C++ code resemble each other. Since Python does not allow
 templates, the classes are binded with as many as possible instantiations.
+
+Additionally, the library allows the usage of native Python generative models
+(where you don't need to specify the transition and reward functions, you only
+sample next state and reward). This allows for example to directly use OpenAI
+gym environments with minimal code writing.
 
 That said, if you need to customize a specific implementation to make it perform
 better on your specific use-cases, or if you want to try something completely
@@ -208,16 +213,18 @@ MAKE_LIB         # Builds the whole core C++ libraries (MDP, POMDP, etc..)
 MAKE_MDP         # Builds only the core C++ MDP library
 MAKE_FMDP        # Builds only the core C++ Factored/Multi-Agent and MDP libraries
 MAKE_POMDP       # Builds only the core C++ POMDP and MDP libraries
-MAKE_PYTHON      # Builds Python bindings for the compiled core libraries
 MAKE_TESTS       # Builds the library's tests for the compiled core libraries
 MAKE_EXAMPLES    # Builds the library's examples using the compiled core libraries
+MAKE_PYTHON      # Builds Python bindings for the compiled core libraries
+PYTHON_VERSION   # Selects the Python version you want (2 or 3). If not
+                 # specified, we try to guess based on your default interpreter.
 ```
 
 These flags can be combined as needed. For example:
 
 ```bash
-# Will build MDP and MDP Python bindings
-cmake -DCMAKE_BUILD_TYPE=Debug -DMAKE_MDP=1 -DMAKE_PYTHON=1 ..
+# Will build MDP and MDP Python 3 bindings
+cmake -DCMAKE_BUILD_TYPE=Debug -DMAKE_MDP=1 -DMAKE_PYTHON=1 -DPYTHON_VERSION=3 ..
 ```
 
 The default flags when nothing is specified are `MAKE_ALL` and

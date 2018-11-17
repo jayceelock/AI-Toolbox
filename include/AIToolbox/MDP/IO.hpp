@@ -149,11 +149,15 @@ namespace AIToolbox::MDP {
      * input model if the reading fails.
      *
      * @param is The input stream.
+<<<<<<< HEAD
      * @param p The Policy to write into.
+=======
+     * @param p The policy to write into.
+>>>>>>> eae5f44d4fbf5c19a55d12f263961a4a69fa9100
      *
      * @return The input stream.
      */
-    std::istream& operator>>(std::istream &is, Policy &);
+    std::istream& operator>>(std::istream &is, Policy & p);
 }
 
 #endif
