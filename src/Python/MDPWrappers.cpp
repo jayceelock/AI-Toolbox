@@ -17,6 +17,8 @@ void exportMDPGenerativeModelPython();
 void exportMDPQLearning();
 void exportMDPHystereticQLearning();
 void exportMDPSARSA();
+void exportMDPSARSAL();
+void exportMDPQL();
 void exportMDPExpectedSARSA();
 void exportMDPValueIteration();
 void exportMDPPolicyIteration();
@@ -58,6 +60,8 @@ void exportMDP() {
     exportMDPQLearning();
     exportMDPHystereticQLearning();
     exportMDPSARSA();
+    exportMDPSARSAL();
+    exportMDPQL();
     exportMDPExpectedSARSA();
     exportMDPValueIteration();
     exportMDPPolicyIteration();
