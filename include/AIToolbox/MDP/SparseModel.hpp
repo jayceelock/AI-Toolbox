@@ -406,7 +406,10 @@ namespace AIToolbox::MDP {
                 if ( checkDifferentSmall(0.0, r) ) rewards_.coeffRef(s, a) += r * p;
             }
             if ( checkDifferentSmall(1.0, transitions_[a].row(s).sum()) )
+            {
+                // printf("p: %f\n", transitions_[a].row(s).sum());
                 throw std::invalid_argument("Input transition table contains an invalid row.");
+            }
         }
 
         for ( size_t a = 0; a < A; ++a )

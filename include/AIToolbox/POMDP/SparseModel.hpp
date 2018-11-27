@@ -334,14 +334,20 @@ namespace AIToolbox::POMDP {
     void SparseModel<M>::setObservationFunction(const ObFun & of) {
         for ( size_t s1 = 0; s1 < this->getS(); ++s1 )
             for ( size_t a = 0; a < this->getA(); ++a )
+            {
                 if ( !isProbability(O, of[s1][a]) )
+                {
                     throw std::invalid_argument("Input observation table does not contain valid probabilities.");
+                }
+            }
 
         for ( size_t s1 = 0; s1 < this->getS(); ++s1 )
             for ( size_t a = 0; a < this->getA(); ++a )
-                for ( size_t o = 0; o < O; ++o ) {
+                for ( size_t o = 0; o < O; ++o ) 
+                {
                     const double p = of[s1][a][o];
-                    if ( checkDifferentSmall( p, 0.0 ) ) observations_[a].insert(s1, o) = p;
+                    //if ( checkDifferentSmall( p, 0.0 ) ) observations_[a].insert(s1, o) = p;
+                    if ( checkDifferentSmall( p, 0.0 ) ) observations_[a].coeffRef(s1, o) = p;
                 }
 
         for ( size_t a = 0; a < this->getA(); ++a )
