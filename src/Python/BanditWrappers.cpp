@@ -2,9 +2,13 @@
 
 class NamespaceBandit{};
 
+void exportBanditRollingAverage();
+
 void exportBanditPolicyInterface();
 
-void exportBanditGreedyPolicy();
+void exportBanditEpsilonPolicy();
+void exportBanditQGreedyPolicy();
+void exportBanditQSoftmaxPolicy();
 void exportBanditThompsonSamplingPolicy();
 
 void exportBanditLRPPolicy();
@@ -21,9 +25,13 @@ void exportBandit() {
     // Set the scope for the exports to the new module.
     bp::scope currentScope = newModule;
 
+    exportBanditRollingAverage();
+
     exportBanditPolicyInterface();
 
-    exportBanditGreedyPolicy();
+    exportBanditEpsilonPolicy();
+    exportBanditQGreedyPolicy();
+    exportBanditQSoftmaxPolicy();
     exportBanditThompsonSamplingPolicy();
 
     exportBanditLRPPolicy();
