@@ -43,7 +43,8 @@ if (MAKE_MDP)
     AddTestGlobal(UtilsPrune)
     AddTestGlobal(UtilsPolytope)
 
-    AddTest(Bandit GreedyPolicy)
+    AddTest(Bandit QGreedyPolicy)
+    AddTest(Bandit QSoftmaxPolicy)
     AddTest(Bandit ThompsonSamplingPolicy)
     AddTest(Bandit LRPPolicy)
     AddTest(Bandit ESRLPolicy)
@@ -76,6 +77,7 @@ if (MAKE_MDP)
     AddTest(MDP SARSAL)
     AddTest(MDP TreeBackupL)
     AddTest(MDP ValueIteration)
+    AddTest(MDP LinearProgramming)
 
     if (MAKE_PYTHON)
         AddTestPython(MDP Experience)
@@ -97,10 +99,13 @@ endif()
 
 if (MAKE_FMDP)
     AddTest(Factored Utils)
+    AddTest(Factored BayesianNetwork)
     AddTest(Factored FactoredContainer)
     AddTest(Factored FactorGraph)
 
     AddTest(Factored FactoredLP)
+
+    AddTest(Factored CooperativeModel)
 
     AddTest(Factored LLR)
     AddTest(Factored MAUCE)
@@ -109,6 +114,7 @@ if (MAKE_FMDP)
     AddTest(Factored VariableElimination)
 
     AddTest(Factored SparseCooperativeQLearning)
+    AddTest(Factored LinearProgramming)
     AddTest(Factored JointActionLearner)
 
     if (MAKE_PYTHON)

@@ -54,10 +54,12 @@ namespace AIToolbox::MDP {
             /**
              * @brief This function returns the probability of taking the specified action in the specified state.
              *
+             * \sa sampleAction(const size_t & s);
+             *
              * @param s The selected state.
              * @param a The selected action.
              *
-             * @return This function returns 1 if a is equal to the greediest action, and 0 otherwise.
+             * @return The probability of taking the specified action in the specified state.
              */
             virtual double getActionProbability(const size_t & s, const size_t & a) const override;
 
@@ -101,7 +103,9 @@ namespace AIToolbox::MDP {
 
         private:
             double temperature_;
-            QGreedyPolicy greedy_;
+            // To avoid reallocating a vector every time for sampling.
+            mutable std::vector<size_t> bestActions_;
+            mutable Vector vbuffer_;
     };
 }
 

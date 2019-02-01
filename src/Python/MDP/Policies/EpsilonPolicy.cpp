@@ -36,7 +36,7 @@ void exportMDPEpsilonPolicy() {
         , (arg("self"), "p", "epsilon")))
 
         .def("sampleAction",            &EpsilonPolicy::sampleAction,
-             "This function chooses a random action for state s, following the policy distribution and epsilon.\n"
+             "This function chooses an action for state s, following the policy distribution and epsilon.\n"
              "\n"
              "This function has a probability of (1 - epsilon) of selecting\n"
              "a random action. Otherwise, it selects an action according\n"
@@ -78,5 +78,3 @@ void exportMDPEpsilonPolicy() {
              "This function will return the currently set epsilon parameter."
         , (arg("self")));
 }
-
-

@@ -4,10 +4,15 @@ if (MAKE_MDP)
     add_library(AIToolboxMDP
         Impl/Seeder.cpp
         Impl/CassandraParser.cpp
+        LP/LpSolveWrapper.cpp
         Utils/Combinatorics.cpp
         Utils/Probability.cpp
         Utils/Polytope.cpp
-        Bandit/Policies/GreedyPolicy.cpp
+        Tools/Statistics.cpp
+        Bandit/Algorithms/RollingAverage.cpp
+        Bandit/Policies/EpsilonPolicy.cpp
+        Bandit/Policies/QGreedyPolicy.cpp
+        Bandit/Policies/QSoftmaxPolicy.cpp
         Bandit/Policies/ThompsonSamplingPolicy.cpp
         Bandit/Policies/LRPPolicy.cpp
         Bandit/Policies/ESRLPolicy.cpp
@@ -36,11 +41,11 @@ if (MAKE_MDP)
         MDP/Policies/PGAAPPPolicy.cpp
     )
     set_target_properties(AIToolboxMDP PROPERTIES INTERPROCEDURAL_OPTIMIZATION ${LTO_SUPPORTED})
+    target_link_libraries(AIToolboxMDP ${LPSOLVE_LIBRARIES})
 endif()
 
 if (MAKE_POMDP)
     add_library(AIToolboxPOMDP
-        LP/LpSolveWrapper.cpp
         POMDP/Utils.cpp
         POMDP/IO.cpp
         POMDP/Algorithms/AMDP.cpp
@@ -61,21 +66,28 @@ endif()
 
 if (MAKE_FMDP)
     add_library(AIToolboxFMDP
-        LP/LpSolveWrapper.cpp
         Factored/Utils/FactoredContainer.cpp
         Factored/Utils/Core.cpp
+        Factored/Utils/FactoredMatrix.cpp
+        Factored/Utils/FactoredVectorOps.cpp
+        Factored/Utils/Factored2DMatrixOps.cpp
+        Factored/Utils/BayesianNetwork.cpp
         Factored/Bandit/Algorithms/Utils/VariableElimination.cpp
         Factored/Bandit/Algorithms/Utils/MultiObjectiveVariableElimination.cpp
         Factored/Bandit/Algorithms/Utils/UCVE.cpp
         Factored/Bandit/Algorithms/LLR.cpp
         Factored/Bandit/Algorithms/MAUCE.cpp
         Factored/Bandit/Policies/QGreedyPolicy.cpp
+        Factored/MDP/Utils.cpp
+        Factored/MDP/Model.cpp
+        Factored/MDP/CooperativeModel.cpp
         Factored/MDP/Policies/EpsilonPolicy.cpp
         Factored/MDP/Policies/SingleActionPolicy.cpp
         Factored/MDP/Policies/QGreedyPolicy.cpp
         Factored/MDP/Algorithms/Utils/FactoredLP.cpp
         Factored/MDP/Algorithms/SparseCooperativeQLearning.cpp
         Factored/MDP/Algorithms/JointActionLearner.cpp
+        Factored/MDP/Algorithms/LinearProgramming.cpp
     )
     set_target_properties(AIToolboxFMDP PROPERTIES INTERPROCEDURAL_OPTIMIZATION ${LTO_SUPPORTED})
     target_link_libraries(AIToolboxFMDP AIToolboxMDP ${LPSOLVE_LIBRARIES})
@@ -97,8 +109,11 @@ if (MAKE_PYTHON)
     if (MAKE_MDP)
         set(PYTHON_FILES ${PYTHON_FILES}
             # Bandits
+            Python/Bandit/Algorithms/RollingAverage.cpp
             Python/Bandit/Policies/PolicyInterface.cpp
-            Python/Bandit/Policies/GreedyPolicy.cpp
+            Python/Bandit/Policies/EpsilonPolicy.cpp
+            Python/Bandit/Policies/QGreedyPolicy.cpp
+            Python/Bandit/Policies/QSoftmaxPolicy.cpp
             Python/Bandit/Policies/ThompsonSamplingPolicy.cpp
             Python/Bandit/Policies/LRPPolicy.cpp
             Python/Bandit/Policies/ESRLPolicy.cpp
