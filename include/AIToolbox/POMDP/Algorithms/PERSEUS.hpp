@@ -188,6 +188,7 @@ namespace AIToolbox::POMDP {
         double variation = tolerance_ * 2; // Make it bigger
         while ( timestep < horizon_ && ( !useTolerance || variation > tolerance_ ) ) {
             ++timestep;
+            printf("t: %u variation: %f\n", timestep, variation);
             // Compute all possible outcomes, from our previous results.
             // This means that for each action-observation pair, we are going
             // to obtain the same number of possible outcomes as the number

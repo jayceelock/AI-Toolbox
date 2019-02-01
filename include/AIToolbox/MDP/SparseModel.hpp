@@ -405,9 +405,9 @@ namespace AIToolbox::MDP {
                 const double r = model.getExpectedReward(s, a, s1);
                 if ( checkDifferentSmall(0.0, r) ) rewards_.coeffRef(s, a) += r * p;
             }
+            //printf("p: %f\n", transitions_[a].row(s).sum());
             if ( checkDifferentSmall(1.0, transitions_[a].row(s).sum()) )
             {
-                // printf("p: %f\n", transitions_[a].row(s).sum());
                 throw std::invalid_argument("Input transition table contains an invalid row.");
             }
         }
