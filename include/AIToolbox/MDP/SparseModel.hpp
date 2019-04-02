@@ -401,13 +401,15 @@ namespace AIToolbox::MDP {
                 const double p = model.getTransitionProbability(s, a, s1);
                 if ( p < 0.0 || p > 1.0 )
                     throw std::invalid_argument("Input transition table contains an invalid value.");
-
                 if ( checkDifferentSmall(0.0, p) ) transitions_[a].insert(s, s1) = p;
                 const double r = model.getExpectedReward(s, a, s1);
                 if ( checkDifferentSmall(0.0, r) ) rewards_.coeffRef(s, a) += r * p;
             }
             if ( checkDifferentSmall(1.0, transitions_[a].row(s).sum()) )
+            {
+                // printf("p: %f\n", transitions_[a].row(s).sum());
                 throw std::invalid_argument("Input transition table contains an invalid row.");
+            }
         }
 
         for ( size_t a = 0; a < A; ++a )

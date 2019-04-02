@@ -20,7 +20,7 @@ namespace AIToolbox::MDP {
      *
      * Building this object is somewhat expensive, so it should be done
      * mostly when it is known that the final solution won't change again.
-     *
+     last*
      * Note that this class is meant to be read-only, after being constructed.
      * If you are looking to manually modify the policy table you should save
      * it on the side and use the PolicyWrapper class.
