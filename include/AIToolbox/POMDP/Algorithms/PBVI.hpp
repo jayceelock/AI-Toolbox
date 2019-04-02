@@ -221,6 +221,7 @@ namespace AIToolbox::POMDP {
         const bool useTolerance = checkDifferentSmall(tolerance_, 0.0);
         double variation = tolerance_ * 2; // Make it bigger
         while ( timestep < horizon_ && ( !useTolerance || variation > tolerance_ ) ) {
+            printf("t: %u var: %f\n", timestep, variation);
             ++timestep;
 
             // Compute all possible outcomes, from our previous results.
