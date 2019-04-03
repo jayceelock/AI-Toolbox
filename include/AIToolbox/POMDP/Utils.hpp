@@ -153,10 +153,27 @@ namespace AIToolbox::POMDP {
         auto & br = *bRet;
 
         if constexpr(is_model_eigen_v<M>) {
-            br = model.getObservationFunction(a).col(o).cwiseProduct((b.transpose() * model.getTransitionFunction(a)).transpose());
-        } else {
+            // br = model.getObservationFunction(a).col(o).cwiseProduct((b.transpose() * model.getTransitionFunction(a)).transpose());
             const size_t S = model.getS();
-            for ( size_t s1 = 0; s1 < S; ++s1 ) {
+            for ( size_t s1 = 0; s1 < S; ++s1 )
+            {
+                double sum = 0.0;
+                for ( size_t s = 0; s < S; ++s )
+                {
+                    double transProb = model.getTransitionProbability(s, a, s1);
+                    double belief = b[s];
+                    sum += transProb*belief;
+                }
+
+                double obsProb = model.getObservationProbability(s1, a, o);
+                br[s1] = obsProb*sum;
+            }
+        }
+        else
+        {
+            const size_t S = model.getS();
+            for ( size_t s1 = 0; s1 < S; ++s1 )
+            {
                 double sum = 0.0;
                 for ( size_t s = 0; s < S; ++s )
                     sum += model.getTransitionProbability(s,a,s1) * b[s];
